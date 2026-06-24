@@ -3,6 +3,8 @@ import cookieParser from "cookie-parser";
 import * as dotenv from "dotenv";
 import express from "express";
 import "express-async-errors";
+import mongoSanitize from "express-mongo-sanitize";
+import helmet from "helmet";
 import mongoose from "mongoose";
 import morgan from "morgan";
 dotenv.config();
@@ -37,11 +39,12 @@ if (process.env.NODE_ENV === "development") {
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(helmet());
+app.use(mongoSanitize());
 
 app.use("/api/v1/jobs", authenticateUser, jobRouter);
 app.use("/api/v1/users", authenticateUser, userRouter);
 app.use("/api/v1/auth", authRouter);
-
 
 //for build client
 app.get("*", (req, res) => {

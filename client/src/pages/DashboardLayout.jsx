@@ -1,15 +1,22 @@
-import { Outlet, redirect, useLoaderData, useNavigate } from "react-router-dom";
-import Wrapper from "../assets/wrappers/Dashboard";
-import { BigSidebar, NavBar, SmallSidebar } from "../components";
+import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useState } from "react";
-import { checkDefaultTheme } from "../App";
-import customFetch from "../utils/customFetch";
+import { Outlet, redirect, useNavigate, useNavigation } from "react-router-dom";
 import { toast } from "react-toastify";
+import Wrapper from "../assets/wrappers/Dashboard";
+import { BigSidebar, Loading, NavBar, SmallSidebar } from "../components";
+import customFetch from "../utils/customFetch";
 
-export const loader = async () => {
-  try {
+const userQuery = {
+  queryKey: ["user"],
+  queryFn: async () => {
     const { data } = await customFetch("/users/current-user");
     return data;
+  },
+};
+
+export const loader = (queryClient) => async () => {
+  try {
+    return await queryClient.ensureQueryData(userQuery);
   } catch (error) {
     return redirect("/");
   }
@@ -17,11 +24,13 @@ export const loader = async () => {
 
 const DashboardContext = createContext();
 
-const DashboardLayout = () => {
-  const { user } = useLoaderData();
+const DashboardLayout = ({ isDarkThemeEnabled, queryClient }) => {
+  const { user } = useQuery(userQuery).data;
   const navigate = useNavigate();
+  const navigation = useNavigation();
+  const isPageLoading = navigation.state === "loading";
   const [showSidebar, setShowSidebar] = useState(false);
-  const [isDarkTheme, setIsDarkTheme] = useState(checkDefaultTheme());
+  const [isDarkTheme, setIsDarkTheme] = useState(isDarkThemeEnabled);
   const toggleDarkTheme = () => {
     const newDarkTheme = !isDarkTheme;
     setIsDarkTheme(newDarkTheme);
@@ -36,6 +45,7 @@ const DashboardLayout = () => {
   const logoutUser = async () => {
     navigate("/");
     await customFetch.get("/auth/logout");
+    queryClient.invalidateQueries();
     toast.success("Logging out...");
   };
 
@@ -57,7 +67,7 @@ const DashboardLayout = () => {
           <div>
             <NavBar />
             <div className="dashboard-page">
-              <Outlet context={{ user }} />
+              {isPageLoading ? <Loading /> : <Outlet context={{ user }} />}
             </div>
           </div>
         </main>
